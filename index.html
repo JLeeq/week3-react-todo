@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Week 3 React Todo App (CRUD + 통계 + 필터링)</title>
+  <!-- React, Babel, Tailwind -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+  <div id="root" class="w-full max-w-lg"></div>
+
+  <script type="text/babel">
+    // ✅ 개별 할일 항목 컴포넌트
+    function TodoItem({ todo, onToggle, onDelete }) {
+      return (
+        <li className="flex justify-between items-center p-3 border rounded-lg bg-white shadow-sm">
+          <div className="flex items-center gap-3">
+            {/* 체크박스 */}
+            <input
+              type="checkbox"
+              checked={todo.completed}
+              onChange={() => onToggle(todo.id)}
+              className="w-5 h-5 text-blue-500"
+            />
+            <span
+              className={
+                todo.completed
+                  ? "line-through text-gray-400"
+                  : "text-gray-800"
+              }
+            >
+              {todo.text}
+            </span>
+          </div>
+          <button
+            onClick={() => onDelete(todo.id)}
+            className="text-red-500 hover:text-red-700 text-sm"
+          >
+            삭제
+          </button>
+        </li>
+      );
+    }
+
+    // ✅ 할일 목록 컴포넌트
+    function TodoList({ todos, onToggle, onDelete }) {
+      if (todos.length === 0) {
+        return <p className="text-center text-gray-400">할일이 없습니다.</p>;
+      }
+
+      return (
+        <ul className="space-y-2">
+          {todos.map((todo) => (
+            <TodoItem
+              key={todo.id}
+              todo={todo}
+              onToggle={onToggle}
+              onDelete={onDelete}
+            />
+          ))}
+        </ul>
+      );
+    }
+
+    // ✅ 메인 앱 컴포넌트
+    function TodoApp() {
+      const [todos, setTodos] = React.useState([]);
+      const [inputText, setInputText] = React.useState("");
+      const [filter, setFilter] = React.useState("all");
+
+      // LocalStorage에서 불러오기
+      React.useEffect(() => {
+        const saved = localStorage.getItem("react-todos");
+        if (saved) setTodos(JSON.parse(saved));
+      }, []);
+
+      // LocalStorage 자동 저장
+      React.useEffect(() => {
+        localStorage.setItem("react-todos", JSON.stringify(todos));
+      }, [todos]);
+
+      // ✅ 할일 추가
+      const addTodo = () => {
+        if (!inputText.trim()) return alert("할일을 입력하세요!");
+        const newTodo = {
+          id: Date.now(),
+          text: inputText.trim(),
+          completed: false,
+        };
+        setTodos([...todos, newTodo]);
+        setInputText("");
+      };
+
+      // Enter 키로 추가
+      const handleKeyPress = (e) => {
+        if (e.key === "Enter") addTodo();
+      };
+
+      // 완료 토글
+      const toggleTodo = (id) => {
+        setTodos(
+          todos.map((todo) =>
+            todo.id === id ? { ...todo, completed: !todo.completed } : todo
+          )
+        );
+      };
+
+      // 삭제
+      const deleteTodo = (id) => {
+        setTodos(todos.filter((todo) => todo.id !== id));
+      };
+
+      // 전체 삭제
+      const clearTodos = () => {
+        if (window.confirm("정말 전체 삭제하시겠습니까?")) setTodos([]);
+      };
+
+      // ✅ 필터링된 목록
+      const filteredTodos = todos.filter((todo) => {
+        if (filter === "completed") return todo.completed;
+        if (filter === "active") return !todo.completed;
+        return true;
+      });
+
+      // ✅ 통계 계산
+      const total = todos.length;
+      const done = todos.filter((t) => t.completed).length;
+      const doing = total - done;
+
+      // ✅ UI 렌더링
+      return (
+        <div className="max-w-3xl mx-auto p-6 md:p-8">
+          {/* 헤더 */}
+          <header className="text-center mb-8">
+            <h1 className="text-3xl md:text-4xl font-bold text-blue-500 mb-2">
+              📝 나만의 Todo 리스트
+            </h1>
+            <p className="text-gray-500">
+              React 기반 Todo 앱 (Week 3 과제)
+            </p>
+          </header>
+
+          {/* 입력 영역 */}
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 className="text-xl font-semibold text-gray-700 mb-4">
+              할일 추가하기
+            </h2>
+
+            <div className="flex flex-col md:flex-row gap-3">
+              <input
+                type="text"
+                placeholder="새로운 할일을 입력하세요..."
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                onKeyPress={handleKeyPress}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              />
+              <button
+                onClick={addTodo}
+                className="w-full md:w-auto bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+              >
+                추가
+              </button>
+            </div>
+          </div>
+
+          {/* 필터 버튼 */}
+          <div className="flex justify-center gap-2 mb-4">
+            {["all", "active", "completed"].map((f) => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className={`px-3 py-1 rounded-lg text-sm ${
+                  filter === f
+                    ? "bg-blue-500 text-white"
+                    : "bg-gray-200 hover:bg-gray-300"
+                }`}
+              >
+                {f === "all"
+                  ? "전체"
+                  : f === "active"
+                  ? "진행중"
+                  : "완료"}
+              </button>
+            ))}
+          </div>
+
+          {/* 목록 */}
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">
+              할일 목록
+            </h2>
+            <TodoList
+              todos={filteredTodos}
+              onToggle={toggleTodo}
+              onDelete={deleteTodo}
+            />
+            {todos.length > 0 && (
+              <div className="text-right mt-4">
+                <button
+                  onClick={clearTodos}
+                  className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg"
+                >
+                  전체 삭제
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* 통계 */}
+          <div className="bg-white rounded-lg shadow-md p-6 mt-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-3">
+              📊 진행 현황
+            </h3>
+            <div className="grid grid-cols-3 gap-4 text-center">
+              {[
+                { label: "전체", value: total, color: "text-blue-600" },
+                { label: "완료", value: done, color: "text-green-600" },
+                { label: "남은 일", value: doing, color: "text-orange-600" },
+              ].map((item) => (
+                <div key={item.label}>
+                  <div className={`text-2xl font-bold ${item.color}`}>
+                    {item.value}
+                  </div>
+                  <div className="text-sm text-gray-500">{item.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ✅ 렌더링
+    ReactDOM.createRoot(document.getElementById("root")).render(<TodoApp />);
+  </script>
+</body>
+</html>
